@@ -1,6 +1,4 @@
-FROM sekwonlee/kvs:base
-
-MAINTAINER Sekwon Lee <sklee@cs.utexas.edu> version: 0.1
+FROM eafdeafd/kvs:base
 
 USER root
 

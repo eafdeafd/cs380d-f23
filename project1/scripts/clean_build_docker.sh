@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sudo docker image rm $(sudo docker image ls --format '{{.Repository}} {{.ID}}' | grep 'sekwonlee' | awk '{print $2}')
+sudo docker image rm $(sudo docker image ls --format '{{.Repository}} {{.ID}}' | grep 'eafdeafd' | awk '{print $2}')
 
 cd dockerfiles
 
