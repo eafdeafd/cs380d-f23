@@ -144,28 +144,28 @@ class FrontendRPCServer:
                 return "ERR_NOSERVERS"
             key, value = str(key), str(value)
             serverIds = list(kvsServers.keys())
-            #with self.kLock:
-            if key not in self.key_to_version:
-                self.key_to_lock[key] = threading.Lock()
+            with self.kLock:
+                if key not in self.key_to_version:
+                    self.key_to_lock[key] = threading.Lock()
             with self.key_to_lock[key]:
                 non_updated_servers = []
                 active_servers = [i for i in serverIds if i not in self.stale_servers]
                 
                 for i in active_servers:
-                    for j in range(self.heartbeat_max):
+                    for j in range(1):
                         try:
                             kvsServers[i].put(key, value)
                             break
                         except:
-                            if j == self.heartbeat_max - 1:
+                            if j == 1 - 1:
                                 non_updated_servers.append(i)
                                 self.stale_servers.add(i)
                 # If at least one put operation succeeded, update the VERSION and key-to-version
                 if len(non_updated_servers) < len(active_servers):
-                    #with self.kLock:
-                    self.VERSION += 1
-                    self.log[key] = value
-                    self.key_to_version[key] = self.VERSION
+                    with self.kLock:
+                        self.VERSION += 1
+                        self.log[key] = value
+                        self.key_to_version[key] = self.VERSION
                 if len(non_updated_servers) == 0:
                     return f"Success put {key}:{value}"
                 else:
@@ -187,7 +187,7 @@ class FrontendRPCServer:
 
         with self.key_to_lock[key]:
             serverIds = list(kvsServers.keys())
-            retries = self.heartbeat_max
+            retries = 1
             random.shuffle(serverIds)
             for i in serverIds:
                 for _ in range(retries):
