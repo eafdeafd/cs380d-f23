@@ -151,7 +151,8 @@ class FrontendRPCServer:
                     self.log[key] = value
                     self.key_to_version[key] = self.VERSION
                 non_updated_servers = []
-                for i in serverIds:
+                active_servers = [i for i in serverIds if i not in self.stale_servers]                
+                for i in active_servers:
                     try:
                         kvsServers[i].put(key, value)
                     except:
@@ -179,7 +180,7 @@ class FrontendRPCServer:
                 try:
                     value, version = kvsServers[i].get(key)
                     # Check version against primary
-                    if self.key_to_version[key] == version:
+                    if self.key_to_version[key] <= version:
                         return value
                     else:
                         break
