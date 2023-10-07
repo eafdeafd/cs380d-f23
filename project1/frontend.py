@@ -148,18 +148,24 @@ class FrontendRPCServer:
             if key not in self.key_to_version:
                 self.key_to_lock[key] = threading.Lock()
             with self.key_to_lock[key]:
-                #with self.kLock:
-                self.VERSION += 1 # -------- GETS CAN NO LONGER GET OLD VALUE --------------
-                self.log[key] = value
-                self.key_to_version[key] = self.VERSION
                 non_updated_servers = []
-                active_servers = [i for i in serverIds if i not in self.stale_servers]                
+                active_servers = [i for i in serverIds if i not in self.stale_servers]
+                
                 for i in active_servers:
-                    try:
-                        kvsServers[i].put(key, value)
-                    except:
-                        non_updated_servers.append(i)
-                        self.stale_servers.add(i)
+                    for j in range(self.heartbeat_max):
+                        try:
+                            kvsServers[i].put(key, value)
+                            break
+                        except:
+                            if j == self.heartbeat_max - 1:
+                                non_updated_servers.append(i)
+                                self.stale_servers.add(i)
+                # If at least one put operation succeeded, update the VERSION and key-to-version
+                if len(non_updated_servers) < len(active_servers):
+                    #with self.kLock:
+                    self.VERSION += 1
+                    self.log[key] = value
+                    self.key_to_version[key] = self.VERSION
                 if len(non_updated_servers) == 0:
                     return f"Success put {key}:{value}"
                 else:
@@ -169,28 +175,32 @@ class FrontendRPCServer:
     ## servers that are responsible for getting the value
     ## associated with the given key.
     def get(self, key):
-        serverIds = list(kvsServers.keys())
         if len(serverIds) == 0:
             return "ERR_NOSERVERS"
         key = str(key)
+        if key not in self.log:
+            return "ERR_KEY"
         # Get with retries
         # most up to date version
-        retries = self.heartbeat_max
-        random.shuffle(serverIds)
-        for i in serverIds:
-            for _ in range(retries):
-                try:
-                    value, version = kvsServers[i].get(key)
-                    # Check version against primary
-                    if self.key_to_version[key] <= version:
-                        return value
-                    else:
-                        break
-                except KeyError:
-                    return "ERR_KEY"
-                except:
-                    pass
-        return "ERR_KEY"
+        if key not in self.key_to_lock:
+            self.key_to_lock[key] = threading.Lock()
+
+        with self.key_to_lock[key]:
+            serverIds = list(kvsServers.keys())
+            retries = self.heartbeat_max
+            random.shuffle(serverIds)
+            for i in serverIds:
+                for _ in range(retries):
+                    try:
+                        value, version = kvsServers[i].get(key)
+                        # Check version against primary
+                        if self.key_to_version[key] <= version:
+                            return value
+                        else:
+                            break
+                    except:
+                        pass
+            return "ERR_KEY"
 
     ## printKVPairs: This function routes requests to servers
     ## matched with the given serverIds.
