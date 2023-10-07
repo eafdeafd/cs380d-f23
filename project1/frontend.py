@@ -130,6 +130,8 @@ class FrontendRPCServer:
                 for serverId in servers_to_remove:
                     kvsServers.pop(serverId, None)
                     self.heartbeat_counter.pop(serverId, None)
+                    self.stale_servers.discard(serverId)
+
 
     ## put: This function routes requests from clients to proper
     ## servers that are responsible for inserting a new key-value
@@ -226,6 +228,7 @@ class FrontendRPCServer:
                 return "ERR_NOEXIST"
             result = kvsServers[serverId].shutdownServer()
             kvsServers.pop(serverId, None)
+            self.stale_servers.discard(serverId)
             self.heartbeat_counter.pop(serverId, None)
             return result
 
