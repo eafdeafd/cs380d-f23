@@ -172,14 +172,14 @@ class FrontendRPCServer:
     ## servers that are responsible for getting the value
     ## associated with the given key.
     def get(self, key):
-        if len(serverIds) == 0:
-            return "ERR_NOSERVERS"
         key = str(key)
         if key not in self.log:
             return "ERR_KEY"
         # Get with retries
         # most up to date version
         serverIds = list(kvsServers.keys())
+        if len(serverIds) == 0:
+            return "ERR_NOSERVERS"
         while len(serverIds) > 0: 
             server = random.choice(serverIds)
             try:
