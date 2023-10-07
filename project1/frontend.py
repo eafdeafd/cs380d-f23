@@ -144,14 +144,14 @@ class FrontendRPCServer:
                 return "ERR_NOSERVERS"
             key, value = str(key), str(value)
             serverIds = list(kvsServers.keys())
-            with self.kLock:
-                if key not in self.key_to_version:
-                    self.key_to_lock[key] = threading.Lock()
+            #with self.kLock:
+            if key not in self.key_to_version:
+                self.key_to_lock[key] = threading.Lock()
             with self.key_to_lock[key]:
-                with self.kLock:
-                    self.VERSION += 1 # -------- GETS CAN NO LONGER GET OLD VALUE --------------
-                    self.log[key] = value
-                    self.key_to_version[key] = self.VERSION
+                #with self.kLock:
+                self.VERSION += 1 # -------- GETS CAN NO LONGER GET OLD VALUE --------------
+                self.log[key] = value
+                self.key_to_version[key] = self.VERSION
                 non_updated_servers = []
                 active_servers = [i for i in serverIds if i not in self.stale_servers]                
                 for i in active_servers:
@@ -186,6 +186,8 @@ class FrontendRPCServer:
                         return value
                     else:
                         break
+                except KeyError:
+                    return "ERR_KEY"
                 except:
                     pass
         return "ERR_KEY"
