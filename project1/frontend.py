@@ -169,6 +169,7 @@ class FrontendRPCServer:
         serverIds = list(kvsServers.keys())
         if len(serverIds) == 0:
             return "ERR_NOSERVERS"
+        key = str(key)
         # Get with retries
         # most up to date version
         retries = self.heartbeat_max
