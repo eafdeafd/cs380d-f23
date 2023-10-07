@@ -67,7 +67,7 @@ class FrontendRPCServer:
         if len(kvsServers) == 0:
             return "ERR_NOSERVERS"
         while self.wLock.locked():
-            time.sleep(.0001)
+            time.sleep(.1)
         key = str(key)
         with self.kLock:
             if key not in self.key_to_version:
@@ -92,10 +92,8 @@ class FrontendRPCServer:
                         least_one = True
                     except:
                         pass
-            # If at least one put operation succeeded, update the VERSION and key-to-version
             with self.kLock:
                 if least_one:
-                    #self.VERSION += 1
                     self.log[key] = value
                     self.key_to_version[key] += 1
                     return f"Success put {key}:{value}"
