@@ -144,6 +144,7 @@ class FrontendRPCServer:
     ## listServer: This function prints out a list of servers that
     ## are currently active/alive inside the cluster.
     def listServer(self):
+        
         if len(kvsServers) == 0:
             return "ERR_NOSERVERS"
         serverList = list(kvsServers.keys())
