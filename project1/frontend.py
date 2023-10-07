@@ -12,7 +12,7 @@ baseAddr = "http://localhost:"
 baseServerPort = 9000
 
 class ShutdownSignal(Exception):
-    pass
+        pass
 
 class SimpleThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
         pass
