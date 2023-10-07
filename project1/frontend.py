@@ -90,6 +90,7 @@ class FrontendRPCServer:
         self.start_heartbeat()
         #self.VERSION = 0
         self.kLock = threading.Lock()
+        self.wLock = threading.Lock()
         self.key_to_version = {}
         self.key_to_lock = {}
         self.log = {}
@@ -106,9 +107,10 @@ class FrontendRPCServer:
     def heartbeat_check(self):
         while True:
             time.sleep(1 / self.heartbeat_rate)
-            servers_to_remove = []
-            with kvsServers_lock.w_locked():
-                for i in kvsServers.keys():
+            with self.wLock:
+                servers_to_remove = []
+                serverList = list(kvsServers.keys())
+                for i in serverList:
                     # Heartbeat servers
                     try:
                         response = kvsServers[i].heartbeat()
@@ -130,11 +132,12 @@ class FrontendRPCServer:
     ## pair or updating an existing one.
     # Per key versioning
     # passing lock to frontend
-    def put(self, key, value):
-      #with kvsServers_lock.r_locked():       
+    def put(self, key, value):      
         if len(kvsServers) == 0:
             return "ERR_NOSERVERS"
-        key= str(key)
+        while self.wLock.locked():
+            time.sleep(.0001)
+        key = str(key)
         with self.kLock:
             if key not in self.key_to_version:
                 self.key_to_lock[key] = threading.Lock()
@@ -196,15 +199,14 @@ class FrontendRPCServer:
     ## printKVPairs: This function routes requests to servers
     ## matched with the given serverIds.
     def printKVPairs(self, serverId):
-        with kvsServers_lock.r_locked():
-            if serverId not in kvsServers:
-                return "ERR_NOEXIST"
-            return kvsServers[serverId].printKVPairs()
+        if serverId not in kvsServers:
+            return "ERR_NOEXIST"
+        return kvsServers[serverId].printKVPairs()
 
     ## addServer: This function registers a new server with the
     ## serverId to the cluster membership.
     def addServer(self, serverId):
-        with kvsServers_lock.w_locked():
+        with self.wLock:
             kvsServers[serverId] = xmlrpc.client.ServerProxy(baseAddr + str(baseServerPort + serverId))
             self.heartbeat_counter[serverId] = 0
             with self.kLock:
@@ -214,19 +216,17 @@ class FrontendRPCServer:
     ## listServer: This function prints out a list of servers that
     ## are currently active/alive inside the cluster.
     def listServer(self):
-        with kvsServers_lock.r_locked():
-            if len(kvsServers) == 0:
-                return "ERR_NOSERVERS"
-            serverList = []
-            for serverId in sorted(kvsServers):
-                serverList.append(str(serverId))
-            return ", ".join(serverList)
+        if len(kvsServers) == 0:
+            return "ERR_NOSERVERS"
+        serverList = list(kvsServers.keys())
+        serverList.sort()
+        return ", ".join(serverList)
 
     ## shutdownServer: This function routes the shutdown request to
     ## a server matched with the specified serverId to let the corresponding
     ## server terminate normally.
     def shutdownServer(self, serverId):
-        with kvsServers_lock.w_locked():
+        with self.wLock:
             if serverId not in kvsServers.keys():
                 return "ERR_NOEXIST"
             result = kvsServers[serverId].shutdownServer()
