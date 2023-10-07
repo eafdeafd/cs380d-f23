@@ -11,8 +11,6 @@ requests = list()
 baseAddr = "http://localhost:"
 baseServerPort = 9000
 
-class ShutdownSignal(Exception):
-        pass
 
 class SimpleThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
         pass
@@ -165,7 +163,6 @@ class FrontendRPCServer:
                 return "ERR_NOEXIST"
             try:
                 kvsServers[serverId].shutdownServer()
-            except ShutdownSignal:
                 kvsServers.pop(serverId, None)
                 self.heartbeat_counter.pop(serverId, None)
                 return f"[Shutdown Server {serverId}]"

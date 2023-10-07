@@ -13,6 +13,7 @@ class KVSRPCServer:
         self.kvs = {}
         self.lock = threading.Lock()
         self.key_to_version = {}
+        self.shutdown = False
 
     def update_data(self, data, version):
         with self.lock:
@@ -45,10 +46,14 @@ class KVSRPCServer:
         with self.lock:
             self.kvs = {}
             self.key_to_version = {}
-            raise ShutdownSignal("[Server " + str(serverId) + "] Receive a request for a normal shutdown")
+            self.shutdown = True
+            return "[Server " + str(serverId) + "] Receive a request for a normal shutdown"
 
     def heartbeat(self):
         return True
+    
+    def should_shutdown(self):
+        return self.shutdown
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = '''To be added.''')
@@ -61,9 +66,8 @@ if __name__ == '__main__':
     serverId = args.serverId[0]
 
     server = xmlrpc.server.SimpleXMLRPCServer(("localhost", basePort + serverId))
-    server.register_instance(KVSRPCServer())
-
-    try:
-        server.serve_forever()
-    except ShutdownSignal:
-        print("Server is shutting down...")
+    server_instance = KVSRPCServer()
+    server.register_instance(server_instance)
+    while not server_instance.should_shutdown():
+        server.handle_request()
+    print("Server is shutting down...")
