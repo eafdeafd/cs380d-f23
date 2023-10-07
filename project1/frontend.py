@@ -140,6 +140,7 @@ class FrontendRPCServer:
         with kvsServers_lock.r_locked():       
             if len(kvsServers) == 0:
                 return "ERR_NOSERVERS"
+            key, value = str(key), str(value)
             serverIds = list(kvsServers.keys())
             with self.kLock:
                 if key not in self.key_to_version:
