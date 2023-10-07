@@ -93,7 +93,7 @@ def loadDataset(thread_id, keys, load_vals, num_threads):
         try:
             result = clientList[thread_id].put(keys[idx], load_vals[idx])
         except:
-            print("[Error in thread %d] put request fail, key = %d, val = %d" % (thread_id, keys[idx], load_vals[idx]))
+            print(f"[Error in thread {thread_id}] put request fail, key = {keys[idx]}, val = {load_vals[idx]}")
             return
 
 def runWorkload(k8s_client, k8s_apps_client, prefix, thread_id,
@@ -117,17 +117,17 @@ def runWorkload(k8s_client, k8s_apps_client, prefix, thread_id,
             try:
                 clientList[thread_id].put(keys[idx], newval)
             except:
-                print("[Error in thread %d] put request fail, key = %d, val = %d" % (thread_id, keys[idx], newval))
+                print(f"[Error in thread {thread_id}] put request fail, key = {keys[idx]}, val = {newval}")
                 return
 
             try:
                 result = clientList[thread_id].get(keys[idx])
                 result = result.split(':')
                 if int(result[0]) != keys[idx] or int(result[1]) != newval:
-                    print("[Error] request = (%d, %d), return = (%d, %d)" % (keys[idx], newval, int(result[0]), int(result[1])))
+                    print(f"[Error] request = ({keys[idx]}, {load_vals[idx]}), return = ({int(result[0])}, {int(result[1])})")
                     return
             except:
-                print("[Error in thread %d] get request fail, key = %d", keys[idx])
+                print(f"[Error in thread {thread_id}] get request fail, key = {keys[idx]}")
                 return
             request_count += 1
     else:
@@ -147,17 +147,17 @@ def runWorkload(k8s_client, k8s_apps_client, prefix, thread_id,
                     try:
                         result = clientList[thread_id].put(keys[idx], run_vals[idx])
                     except:
-                        print("[Error in thread %d] put request fail, key = %d, val = %d" % (thread_id, keys[idx], run_vals[idx]))
+                        print(f"[Error in thread {thread_id}] put request fail, key = {keys[idx]}, val = {run_vals[idx]}")
                         return
                 elif optype[idx % 100] == "Get":
                     try:
                         result = clientList[thread_id].get(keys[idx])
                         result = result.split(':')
                         if int(result[0]) != keys[idx] or int(result[1]) != load_vals[idx]:
-                            print("[Error] request = (%d, %d), return = (%d, %d)" % (keys[idx], load_vals[idx], int(result[0]), int(result[1])))
+                            print(f"[Error] request = ({keys[idx]}, {load_vals[idx]}), return = ({int(result[0])}, {int(result[1])})")
                             return
                     except:
-                        print("[Error in thread %d] get request fail, key = %d", keys[idx])
+                        print(f"[Error in thread {thread_id}] get request fail, key = {keys[idx]}")
                         return
                 else:
                     print("[Error] unknown operation type")
