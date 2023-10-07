@@ -54,8 +54,6 @@ class FrontendRPCServer:
                 kvsServers.pop(serverId, None)
             time.sleep(1 / self.heartbeat_rate)
 
-
-
     ## put: This function routes requests from clients to proper
     ## servers that are responsible for inserting a new key-value
     ## pair or updating an existing one.
@@ -144,7 +142,6 @@ class FrontendRPCServer:
     ## listServer: This function prints out a list of servers that
     ## are currently active/alive inside the cluster.
     def listServer(self):
-        
         if len(kvsServers) == 0:
             return "ERR_NOSERVERS"
         serverList = list(kvsServers.keys())
