@@ -12,25 +12,28 @@ class KVSRPCServer:
         self.version = 0
         self.kvs = {}
         self.lock = threading.Lock()
+        self.key_to_version = {}
 
     def update_data(self, data, version):
         with self.lock:
             self.kvs = data
-            self.version = version
+            self.key_to_version = version
             return True
 
     ## put: Insert a new-key-value pair or updates an existing
     ## one with new one if the same key already exists.
     def put(self, key, value):
         with self.lock:
-            self.version += 1
+            if key not in self.key_to_version:
+                self.key_to_version[key] = 0
+            self.key_to_version[key] += 1
             self.kvs[key] = value
             return "[Server " + str(serverId) + "] Receive a put request: " + "Key = " + str(key) + ", Value = " + str(value)
 
     ## get: Get the value associated with the given key.
     def get(self, key):
         with self.lock:
-            return f"{key}:{self.kvs.get(key, 'ERR_KEY')}", self.version
+            return f"{key}:{self.kvs.get(key, 'ERR_KEY')}", self.key_to_version[key]
 
     ## printKVPairs: Print all the key-value pairs at this server.
     def printKVPairs(self):
@@ -41,6 +44,7 @@ class KVSRPCServer:
     def shutdownServer(self):
         with self.lock:
             self.kvs = {}
+            self.key_to_version = {}
             return "[Server " + str(serverId) + "] Receive a request for a normal shutdown"
 
     def heartbeat(self):
