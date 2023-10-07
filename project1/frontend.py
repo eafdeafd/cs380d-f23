@@ -5,8 +5,6 @@ import threading
 from socketserver import ThreadingMixIn
 from xmlrpc.server import SimpleXMLRPCServer
 import random
-from contextlib import contextmanager
-from threading  import Lock
 
 kvsServers = dict()
 requests = list()
@@ -18,8 +16,6 @@ class ShutdownSignal(Exception):
 
 class SimpleThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
         pass
-
-kvsServers_lock = RWLock()
 
 class FrontendRPCServer:
     def __init__(self):
