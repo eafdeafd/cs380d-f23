@@ -16,12 +16,12 @@ class SimpleThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
 
 class FrontendRPCServer:
     def __init__(self):
-        self.start_heartbeat()
         self.kLock = threading.Lock()
         self.wLock = threading.Lock()
         self.key_to_version = {}
         self.key_to_lock = {}
         self.log = {}
+        self.start_heartbeat()
 
     # Forever heartbeat on thread.
     def start_heartbeat(self):
@@ -50,8 +50,8 @@ class FrontendRPCServer:
                         servers_to_remove.append(i)
             # Remove marked servers
             for serverId in servers_to_remove:
-                #with self.wLock:
-                kvsServers.pop(serverId, None)
+                with self.wLock:
+                    kvsServers.pop(serverId, None)
             time.sleep(1 / self.heartbeat_rate)
 
 
@@ -143,7 +143,8 @@ class FrontendRPCServer:
 
     ## listServer: This function prints out a list of servers that
     ## are currently active/alive inside the cluster.
-    def listServer(self):
+    def listServer(self):                        servers_to_remove.append(i)
+
         if len(kvsServers) == 0:
             return "ERR_NOSERVERS"
         serverList = list(kvsServers.keys())
