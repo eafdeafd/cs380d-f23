@@ -33,7 +33,7 @@ class FrontendRPCServer:
     # Forever heartbeat on thread.
     def start_heartbeat(self):
         self.heartbeat_thread = threading.Thread(target = self.heartbeat_check)
-        self.heartbeat_thread.daemon = True
+        #self.heartbeat_thread.daemon = True
         self.heartbeat_thread.start()
         self.heartbeat_rate = 100 # Rate = # heartbeats per second
         self.heartbeat_max = 2 # Number of allowed heartbeats till we mark it as dead
@@ -42,25 +42,28 @@ class FrontendRPCServer:
     def heartbeat_check(self):
         while True:
             time.sleep(1 / self.heartbeat_rate)
-            with self.wLock:
-                raise Exception
-                servers_to_remove = []
-                serverList = list(kvsServers.keys())
-                for i in serverList:
-                    heartbeat_thread = threading.Thread(target=heartbeat_server, args=(kvsServers[i],))
-                    heartbeat_thread.start()
-                    heartbeat_thread.join(timeout=0.1)  # 100ms timeout
-                    if heartbeat_thread.is_alive():
-                        # If thread is still running after timeout, it's a heartbeat failure
-                        self.heartbeat_counter[i] += 1
-                    else:
-                        self.heartbeat_counter[i] = 0
-                    if self.heartbeat_counter[i] >= self.heartbeat_max:
-                        servers_to_remove.append(i)
-                # Remove marked servers
-                for serverId in servers_to_remove:
-                    kvsServers.pop(serverId, None)
-                    self.heartbeat_counter.pop(serverId, None)
+            try:
+                with self.wLock:
+                    raise Exception
+                    servers_to_remove = []
+                    serverList = list(kvsServers.keys())
+                    for i in serverList:
+                        heartbeat_thread = threading.Thread(target=heartbeat_server, args=(kvsServers[i],))
+                        heartbeat_thread.start()
+                        heartbeat_thread.join(timeout=0.1)  # 100ms timeout
+                        if heartbeat_thread.is_alive():
+                            # If thread is still running after timeout, it's a heartbeat failure
+                            self.heartbeat_counter[i] += 1
+                        else:
+                            self.heartbeat_counter[i] = 0
+                        if self.heartbeat_counter[i] >= self.heartbeat_max:
+                            servers_to_remove.append(i)
+                    # Remove marked servers
+                    for serverId in servers_to_remove:
+                        kvsServers.pop(serverId, None)
+                        self.heartbeat_counter.pop(serverId, None)
+            except Exception as e:
+                print("Exception here")
 
 
     ## put: This function routes requests from clients to proper
