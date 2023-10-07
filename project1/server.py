@@ -25,7 +25,7 @@ class KVSRPCServer:
         with self.lock:
             self.version += 1
             self.kvs[key] = value
-            return "[Server " + str(serverId) + "] Receive a put request: " + "Key = " + str(key) + ", Value = " + str(value), True # do i need to pass self.lock here?
+            return "[Server " + str(serverId) + "] Receive a put request: " + "Key = " + str(key) + ", Value = " + str(value)
 
     ## get: Get the value associated with the given key.
     def get(self, key):

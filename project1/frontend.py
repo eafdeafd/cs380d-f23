@@ -117,7 +117,7 @@ class FrontendRPCServer:
                             self.heartbeat_counter[i] = 0
                             if i in self.stale_servers:
                                 try:
-                                    kvsServers[i].update_data(self.log, self.VERSION)
+                                    kvsServers[i].update_data({k:v for k,v in self.log.items()}, self.VERSION)
                                     self.stale_servers.remove(i)
                                 except:
                                     pass
@@ -141,11 +141,11 @@ class FrontendRPCServer:
             if len(kvsServers) == 0:
                 return "ERR_NOSERVERS"
             serverIds = list(kvsServers.keys())
-            with self.kLock.locked():
+            with self.kLock:
                 if key not in self.key_to_version:
                     self.key_to_lock[key] = threading.Lock()
-            with self.key_to_lock[key].locked():
-                with self.kLock.locked():
+            with self.key_to_lock[key]:
+                with self.kLock:
                     self.VERSION += 1 # -------- GETS CAN NO LONGER GET OLD VALUE --------------
                     self.log[key] = value
                     self.key_to_version[key] = self.VERSION
@@ -200,8 +200,7 @@ class FrontendRPCServer:
             kvsServers[serverId] = xmlrpc.client.ServerProxy(baseAddr + str(baseServerPort + serverId))
             self.heartbeat_counter[serverId] = 0
             if self.VERSION != 0:
-                kvsServers[serverId].kvs = {k:v for k,v in self.log.items()}
-                kvsServers.version = self.VERSION
+                kvsServers[serverId].update_data({k:v for k,v in self.log.items()}, self.VERSION)
             return "Success"
 
     ## listServer: This function prints out a list of servers that
