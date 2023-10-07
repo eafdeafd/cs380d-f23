@@ -28,7 +28,7 @@ class FrontendRPCServer:
         self.heartbeat_thread = threading.Thread(target = self.heartbeat_check)
         self.heartbeat_thread.daemon = True
         self.heartbeat_thread.start()
-        self.heartbeat_rate = 100 # Rate = # heartbeats per second
+        self.heartbeat_rate = 10 # Rate = # heartbeats per second
         self.heartbeat_max = 3 # Number of allowed heartbeats till we mark it as dead
 
     # Timer every second, ping every server. If alive, reset counter. Otherwise remove server after 5 seconds for death.
@@ -37,7 +37,7 @@ class FrontendRPCServer:
             servers_to_remove = []
             serverList = list(kvsServers.keys())
             heartbeats = {k:0 for k in serverList}
-            for _ in range(self.heartbeat_max):
+            for _ in range(self.heartbeat_max + 1):
                 for i in serverList:
                     try:
                         kvsServers[i].heartbeat()
