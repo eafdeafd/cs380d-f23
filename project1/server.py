@@ -2,7 +2,6 @@ import argparse
 import xmlrpc.client
 import xmlrpc.server
 import threading
-from frontend import ShutdownSignal
 serverId = 0
 basePort = 9000
 
