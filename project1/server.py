@@ -1,35 +1,50 @@
 import argparse
 import xmlrpc.client
 import xmlrpc.server
+import threading
 
 serverId = 0
 basePort = 9000
 
 class KVSRPCServer:
-    # TODO: You need to implement details for these functions.
-    def __init__(self) -> None:
-        self.primary = False
+
+    def __init__(self):
+        self.version = 0
         self.kvs = {}
+        self.lock = threading.Lock()
+
+    def update_data(self, data, version):
+        with self.lock:
+            self.kvs = data
+            self.version = version
+            return True
+
     ## put: Insert a new-key-value pair or updates an existing
     ## one with new one if the same key already exists.
     def put(self, key, value):
-        self.kvs[key] = value
-        return "[Server " + str(serverId) + "] Receive a put request: " + "Key = " + str(key) + ", Val = " + str(value)
+        with self.lock:
+            self.version += 1
+            self.kvs[key] = value
+            return "[Server " + str(serverId) + "] Receive a put request: " + "Key = " + str(key) + ", Value = " + str(value), True # do i need to pass self.lock here?
 
     ## get: Get the value associated with the given key.
     def get(self, key):
-        if key not in self.kvs:
-            return "[Server " + str(serverId) + "] Receive a get request: " + "Key NOT FOUND"
-        return "[Server " + str(serverId) + "] Receive a get request: " + "Key = " + str(key) + " Value = " + str(self.kvs[key])
+        with self.lock:
+            return f"{key}:{self.kvs.get(key, 'ERR_KEY')}", self.version
 
     ## printKVPairs: Print all the key-value pairs at this server.
     def printKVPairs(self):
-        return "[Server " + str(serverId) + "] Receive a request printing all KV pairs stored in this server\n" + repr(self.kvs)
+        with self.lock:
+            return '\n'.join([f"{k}:{v}" for k, v in self.kvs.items()]) + "\n"
 
     ## shutdownServer: Terminate the server itself normally.
     def shutdownServer(self):
-        self.primary = False
-        return "[Server " + str(serverId) + "] Receive a request for a normal shutdown"
+        with self.lock:
+            self.kvs = {}
+            return "[Server " + str(serverId) + "] Receive a request for a normal shutdown"
+
+    def heartbeat(self):
+        return True
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = '''To be added.''')
