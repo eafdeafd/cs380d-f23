@@ -2,7 +2,7 @@ import argparse
 import xmlrpc.client
 import xmlrpc.server
 import threading
-
+from frontend import ShutdownSignal
 serverId = 0
 basePort = 9000
 
@@ -45,7 +45,7 @@ class KVSRPCServer:
         with self.lock:
             self.kvs = {}
             self.key_to_version = {}
-            return "[Server " + str(serverId) + "] Receive a request for a normal shutdown"
+            raise ShutdownSignal("[Server " + str(serverId) + "] Receive a request for a normal shutdown")
 
     def heartbeat(self):
         return True
@@ -63,4 +63,7 @@ if __name__ == '__main__':
     server = xmlrpc.server.SimpleXMLRPCServer(("localhost", basePort + serverId))
     server.register_instance(KVSRPCServer())
 
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    except ShutdownSignal:
+        print("Server is shutting down...")
