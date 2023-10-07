@@ -48,8 +48,8 @@ class FrontendRPCServer:
                         servers_to_remove.append(i)
             # Remove marked servers
             for serverId in servers_to_remove:
-                with self.wLock:
-                    kvsServers.pop(serverId, None)
+                #with self.wLock:
+                kvsServers.pop(serverId, None)
             time.sleep(1 / self.heartbeat_rate)
 
 
