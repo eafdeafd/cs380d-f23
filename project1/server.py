@@ -5,6 +5,7 @@ import threading
 serverId = 0
 basePort = 9000
 
+
 class KVSRPCServer:
 
     def __init__(self):
@@ -20,8 +21,8 @@ class KVSRPCServer:
             self.key_to_version = version
             return True
 
-    ## put: Insert a new-key-value pair or updates an existing
-    ## one with new one if the same key already exists.
+    # put: Insert a new-key-value pair or updates an existing
+    # one with new one if the same key already exists.
     def put(self, key, value):
         with self.lock:
             if key not in self.key_to_version:
@@ -30,17 +31,17 @@ class KVSRPCServer:
             self.kvs[key] = value
             return "[Server " + str(serverId) + "] Receive a put request: " + "Key = " + str(key) + ", Value = " + str(value)
 
-    ## get: Get the value associated with the given key.
+    # get: Get the value associated with the given key.
     def get(self, key):
         with self.lock:
             return f"{key}:{self.kvs.get(key, 'ERR_KEY')}", self.key_to_version[key]
 
-    ## printKVPairs: Print all the key-value pairs at this server.
+    # printKVPairs: Print all the key-value pairs at this server.
     def printKVPairs(self):
         with self.lock:
             return '\n'.join([f"{k}:{v}" for k, v in self.kvs.items()]) + "\n"
 
-    ## shutdownServer: Terminate the server itself normally.
+    # shutdownServer: Terminate the server itself normally.
     def shutdownServer(self):
         with self.lock:
             self.kvs = {}
@@ -50,12 +51,13 @@ class KVSRPCServer:
 
     def heartbeat(self):
         return True
-    
+
     def should_shutdown(self):
         return self.shutdown
 
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description = '''To be added.''')
+    parser = argparse.ArgumentParser(description='''To be added.''')
 
     parser.add_argument('-i', '--id', nargs=1, type=int, metavar='I',
                         help='Server id (required)', dest='serverId', required=True)
@@ -64,7 +66,8 @@ if __name__ == '__main__':
 
     serverId = args.serverId[0]
 
-    server = xmlrpc.server.SimpleXMLRPCServer(("localhost", basePort + serverId))
+    server = xmlrpc.server.SimpleXMLRPCServer(
+        ("localhost", basePort + serverId))
     server_instance = KVSRPCServer()
     server.register_instance(server_instance)
     while not server_instance.should_shutdown():
