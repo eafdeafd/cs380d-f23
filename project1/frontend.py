@@ -11,18 +11,11 @@ requests = list()
 baseAddr = "http://localhost:"
 baseServerPort = 9000
 
-def heartbeat_server(server):
-    try:
-        return server.heartbeat()
-    except:
-        return False
-    
 class SimpleThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
         pass
 
 class FrontendRPCServer:
     def __init__(self):
-        self.heartbeat_counter = dict()
         self.start_heartbeat()
         self.kLock = threading.Lock()
         self.wLock = threading.Lock()
@@ -33,37 +26,32 @@ class FrontendRPCServer:
     # Forever heartbeat on thread.
     def start_heartbeat(self):
         self.heartbeat_thread = threading.Thread(target = self.heartbeat_check)
-        #self.heartbeat_thread.daemon = True
+        self.heartbeat_thread.daemon = True
         self.heartbeat_thread.start()
         self.heartbeat_rate = 100 # Rate = # heartbeats per second
-        self.heartbeat_max = 2 # Number of allowed heartbeats till we mark it as dead
+        self.heartbeat_max = 3 # Number of allowed heartbeats till we mark it as dead
 
     # Timer every second, ping every server. If alive, reset counter. Otherwise remove server after 5 seconds for death.
     def heartbeat_check(self):
         while True:
-            time.sleep(1 / self.heartbeat_rate)
-            try:
+            servers_to_remove = []
+            serverList = list(kvsServers.keys())
+            heartbeats = {k:0 for k in serverList}
+            for _ in range(self.heartbeat_max):
+                for i in serverList:
+                    try:
+                        kvsServers[i].heartbeat()
+                        heartbeats[i] = 0
+                    except:
+                        heartbeats[i] += 1
+                    if heartbeats[i] >= self.heartbeat_max:
+                        servers_to_remove.append(i)
+            # Remove marked servers
+            for serverId in servers_to_remove:
                 with self.wLock:
-                    raise Exception
-                    servers_to_remove = []
-                    serverList = list(kvsServers.keys())
-                    for i in serverList:
-                        heartbeat_thread = threading.Thread(target=heartbeat_server, args=(kvsServers[i],))
-                        heartbeat_thread.start()
-                        heartbeat_thread.join(timeout=0.1)  # 100ms timeout
-                        if heartbeat_thread.is_alive():
-                            # If thread is still running after timeout, it's a heartbeat failure
-                            self.heartbeat_counter[i] += 1
-                        else:
-                            self.heartbeat_counter[i] = 0
-                        if self.heartbeat_counter[i] >= self.heartbeat_max:
-                            servers_to_remove.append(i)
-                    # Remove marked servers
-                    for serverId in servers_to_remove:
-                        kvsServers.pop(serverId, None)
-                        self.heartbeat_counter.pop(serverId, None)
-            except Exception as e:
-                print("Exception here")
+                    kvsServers.pop(serverId, None)
+            time.sleep(1 / self.heartbeat_rate)
+
 
 
     ## put: This function routes requests from clients to proper
@@ -147,7 +135,6 @@ class FrontendRPCServer:
     def addServer(self, serverId):
         with self.wLock:
             kvsServers[serverId] = xmlrpc.client.ServerProxy(baseAddr + str(baseServerPort + serverId))
-            self.heartbeat_counter[serverId] = 0
             with self.kLock:
                 kvsServers[serverId].update_data({k:v for k,v in self.log.items()}, {k:v for k,v in self.key_to_version.items()})
             return "Success"
@@ -172,7 +159,6 @@ class FrontendRPCServer:
             try:
                 kvsServers[serverId].shutdownServer()
                 kvsServers.pop(serverId, None)
-                self.heartbeat_counter.pop(serverId, None)
                 return f"[Shutdown Server {serverId}]"
             except:
                 return f"[ERROR SHUTTING DOWN SERVER {serverId}]"
