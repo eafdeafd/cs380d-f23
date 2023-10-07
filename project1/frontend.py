@@ -92,6 +92,7 @@ class FrontendRPCServer:
                         least_one = True
                     except:
                         pass
+                time.sleep(1 / self.heartbeat_rate)
             with self.kLock:
                 if least_one:
                     self.log[key] = value
