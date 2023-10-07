@@ -43,6 +43,7 @@ class FrontendRPCServer:
         while True:
             time.sleep(1 / self.heartbeat_rate)
             with self.wLock:
+                raise Exception
                 servers_to_remove = []
                 serverList = list(kvsServers.keys())
                 for i in serverList:
