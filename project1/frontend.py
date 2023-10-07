@@ -11,15 +11,19 @@ requests = list()
 baseAddr = "http://localhost:"
 baseServerPort = 9000
 
-
+def heartbeat_server(server):
+    try:
+        return server.heartbeat()
+    except:
+        return False
+    
 class SimpleThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
         pass
 
 class FrontendRPCServer:
     def __init__(self):
-        self.heartbeat_counter = dict() # serverId: heartbeat_counter, keep track of heartbeats per server.
+        self.heartbeat_counter = dict()
         self.start_heartbeat()
-        #self.VERSION = 0
         self.kLock = threading.Lock()
         self.wLock = threading.Lock()
         self.key_to_version = {}
@@ -31,7 +35,7 @@ class FrontendRPCServer:
         self.heartbeat_thread = threading.Thread(target = self.heartbeat_check)
         self.heartbeat_thread.daemon = True
         self.heartbeat_thread.start()
-        self.heartbeat_rate = 5 # Rate = # heartbeats per second
+        self.heartbeat_rate = 100 # Rate = # heartbeats per second
         self.heartbeat_max = 2 # Number of allowed heartbeats till we mark it as dead
 
     # Timer every second, ping every server. If alive, reset counter. Otherwise remove server after 5 seconds for death.
@@ -42,16 +46,16 @@ class FrontendRPCServer:
                 servers_to_remove = []
                 serverList = list(kvsServers.keys())
                 for i in serverList:
-                    # Heartbeat servers
-                    try:
-                        response = kvsServers[i].heartbeat()
-                        if response:
-                            self.heartbeat_counter[i] = 0
-                    # Mark for removal when dead
-                    except: 
+                    heartbeat_thread = threading.Thread(target=heartbeat_server, args=(kvsServers[i],))
+                    heartbeat_thread.start()
+                    heartbeat_thread.join(timeout=0.1)  # 100ms timeout
+                    if heartbeat_thread.is_alive():
+                        # If thread is still running after timeout, it's a heartbeat failure
                         self.heartbeat_counter[i] += 1
-                        if self.heartbeat_counter[i] >= self.heartbeat_max:
-                            servers_to_remove.append(i)        
+                    else:
+                        self.heartbeat_counter[i] = 0
+                    if self.heartbeat_counter[i] >= self.heartbeat_max:
+                        servers_to_remove.append(i)
                 # Remove marked servers
                 for serverId in servers_to_remove:
                     kvsServers.pop(serverId, None)
@@ -83,6 +87,7 @@ class FrontendRPCServer:
                     least_one = True
                 except:
                     retry.add(i)
+
             while len(retry) > 0:
                 serverIds = set(kvsServers.keys())
                 retry = retry & serverIds
