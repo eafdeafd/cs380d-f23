@@ -113,17 +113,13 @@ class FrontendRPCServer:
     # associated with the given key.
     def get(self, key):
         key = str(key)
-        print("Try get with " + key, file=sys.stderr)
         if key not in self.log:
             return "ERR_KEY"
         # Get with retries
         # most up to date version
+        if len(kvsServers) == 0:
+            return "ERR_NOSERVERSs" + repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
         serverIds = list(kvsServers.keys())
-        if len(serverIds) == 0:
-            print("ERR_NOSERVERS because serverIDs No length", file=sys.stderr)
-            print(serverIds, file=sys.stderr)
-            print(kvsServers, file=sys.stderr)
-            return "ERR_NOSERVERS" + repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
         while len(serverIds) > 0:
             server = random.choice(serverIds)
             try:
@@ -135,9 +131,6 @@ class FrontendRPCServer:
             except:
                 pass
             serverIds = list(kvsServers.keys())
-        print("ERR no SERVERS because while loop failed", file=sys.stderr)
-        print(serverIds, file=sys.stderr)
-        print(kvsServers, file=sys.stderr)
         return "ERR_NOSERVERS" + repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
 
     # printKVPairs: This function routes requests to servers
