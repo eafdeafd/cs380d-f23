@@ -123,7 +123,7 @@ class FrontendRPCServer:
             print("ERR_NOSERVERS because serverIDs No length", file=sys.stderr)
             print(serverIds, file=sys.stderr)
             print(kvsServers, file=sys.stderr)
-            return "ERR_NOSERVERS"
+            return "ERR_NOSERVERS" + repr(kvsServers) + '.'.join(serverIds)
         while len(serverIds) > 0:
             server = random.choice(serverIds)
             try:
@@ -138,7 +138,7 @@ class FrontendRPCServer:
         print("ERR no SERVERS because while loop failed", file=sys.stderr)
         print(serverIds, file=sys.stderr)
         print(kvsServers, file=sys.stderr)
-        return "ERR_NOSERVERS"
+        return "ERR_NOSERVERS" + repr(kvsServers) + '.'.join(serverIds)
 
     # printKVPairs: This function routes requests to servers
     # matched with the given serverIds.
