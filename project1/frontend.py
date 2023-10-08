@@ -5,6 +5,7 @@ import threading
 from socketserver import ThreadingMixIn
 from xmlrpc.server import SimpleXMLRPCServer
 import random
+import sys
 
 kvsServers = dict()
 requests = list()
@@ -62,7 +63,7 @@ class FrontendRPCServer:
     # Per key versioning
     # passing lock to frontend
     def put(self, key, value):
-        print("Try put with " + str(key) + ":" + str(value))
+        print("Try put with " + str(key) + ":" + str(value), file=sys.stderr)
         if len(kvsServers) == 0:
             return "ERR_NOSERVERS"
         with self.kLock:
@@ -82,7 +83,7 @@ class FrontendRPCServer:
             for i in serverIds:
                 try:
                     kvsServers[i].put(key, value)
-                    print(f"Put with server {i} succeed")
+                    print(f"Put with server {i} succeed", file=sys.stderr)
                     least_one = True
                 except:
                     retry.add(i)
@@ -93,7 +94,7 @@ class FrontendRPCServer:
                 for i in retry:
                     try:
                         kvsServers[i].put(key, value)
-                        print(f"Put with server {i} succeed")
+                        print(f"Put with server {i} succeed", file=sys.stderr)
                         done.append[i]
                         least_one = True
                     except:
@@ -112,16 +113,16 @@ class FrontendRPCServer:
     # associated with the given key.
     def get(self, key):
         key = str(key)
-        print("Try get with " + key)
+        print("Try get with " + key, file=sys.stderr)
         if key not in self.log:
             return "ERR_KEY"
         # Get with retries
         # most up to date version
         serverIds = list(kvsServers.keys())
         if len(serverIds) == 0:
-            print("ERR_NOSERVERS because serverIDs No length")
-            print(serverIds)
-            print(kvsServers)
+            print("ERR_NOSERVERS because serverIDs No length", file=sys.stderr)
+            print(serverIds, file=sys.stderr)
+            print(kvsServers, file=sys.stderr)
             return "ERR_NOSERVERS"
         while len(serverIds) > 0:
             server = random.choice(serverIds)
@@ -134,9 +135,9 @@ class FrontendRPCServer:
             except:
                 pass
             serverIds = list(kvsServers.keys())
-        print("ERR no SERVERS because while loop failed")
-        print(serverIds)
-        print(kvsServers)
+        print("ERR no SERVERS because while loop failed", file=sys.stderr)
+        print(serverIds, file=sys.stderr)
+        print(kvsServers, file=sys.stderr)
         return "ERR_NOSERVERS"
 
     # printKVPairs: This function routes requests to servers
