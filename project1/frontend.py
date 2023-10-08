@@ -123,7 +123,7 @@ class FrontendRPCServer:
                 value, version = kvsServers[server].get(key).split(":")
                 if str(self.key_to_version[key]) <= str(version):
                     return f"{key}:{value}"
-                return f"{key}:{value}:{version}:{self.key_to_version[key]}:{self.log[key]}"
+                #return f"{key}:{value}:{version}:{self.key_to_version[key]}:{self.log[key]}"
             except Exception:
                 pass
             serverIds = list(kvsServers.keys())
