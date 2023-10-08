@@ -24,7 +24,7 @@ class FrontendRPCServer:
         self.key_to_lock = {}
         self.log = {}
         self.heartbeat_rate = 10  # Rate = # heartbeats per second
-        self.heartbeat_max = 3  # Number of allowed heartbeats till we mark it as dead
+        self.heartbeat_max = 2  # Number of allowed heartbeats till we mark it as dead
         self.start_heartbeat()
 
 
@@ -51,10 +51,11 @@ class FrontendRPCServer:
                         heartbeats[i] += 1
                     if heartbeats[i] >= self.heartbeat_max:
                         servers_to_remove.append(i)
+                time.sleep(1 / self.heartbeat_rate)
             # Remove marked servers
             for serverId in servers_to_remove:
-                # with self.wLock:
-                kvsServers.pop(serverId, None)
+                with self.wLock:
+                    kvsServers.pop(serverId, None)
             time.sleep(1 / self.heartbeat_rate)
 
     # put: This function routes requests from clients to proper
@@ -66,7 +67,7 @@ class FrontendRPCServer:
         if len(kvsServers) == 0:
             return "ERR_NOSERVERS"
         while self.wLock.locked():
-            time.sleep(.1)
+            time.sleep(1 / self.heartbeat_rate)
         key = str(key)
         with self.kLock:
             if key not in self.key_to_version:
@@ -76,25 +77,34 @@ class FrontendRPCServer:
             serverIds = list(kvsServers.keys())
             retry = set()
             least_one = False
+            done_already = False
             for i in serverIds:
                 try:
                     kvsServers[i].put(key, value)
                     least_one = True
                 except:
                     retry.add(i)
-
+            if least_one:
+                with self.kLock:
+                    self.log[key] = value
+                    self.key_to_version[key] += 1
+                    done_already = True
             while len(retry) > 0:
                 serverIds = set(kvsServers.keys())
                 retry = retry & serverIds
+                done = []
                 for i in retry:
                     try:
                         kvsServers[i].put(key, value)
+                        done.append[i]
                         least_one = True
                     except:
                         pass
+                    for i in done:
+                        retry.discard(i)
                 time.sleep(1 / self.heartbeat_rate)
             with self.kLock:
-                if least_one:
+                if least_one and not done_already:
                     self.log[key] = value
                     self.key_to_version[key] += 1
                     return f"Success put {key}:{value}"
@@ -117,7 +127,7 @@ class FrontendRPCServer:
             server = random.choice(serverIds)
             try:
                 value, version = kvsServers[server].get(key)
-                if self.key_to_version[key] == version:
+                if self.key_to_version[key] <= version:
                     return value
                 else:
                     break
