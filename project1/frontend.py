@@ -105,7 +105,7 @@ class FrontendRPCServer:
             if not least_one:
                 assert least_one == True
                 return f"PUT FAILED! {key}:{value}"
-            return f"Success put {key}:{value}"
+            return f"Success put {key}:{value}" + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
 
 
     # get: This function routes requests from clients to proper
@@ -123,7 +123,7 @@ class FrontendRPCServer:
             print("ERR_NOSERVERS because serverIDs No length", file=sys.stderr)
             print(serverIds, file=sys.stderr)
             print(kvsServers, file=sys.stderr)
-            return "ERR_NOSERVERS" + repr(kvsServers) + '.'.join(serverIds)
+            return "ERR_NOSERVERS" + repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
         while len(serverIds) > 0:
             server = random.choice(serverIds)
             try:
@@ -138,7 +138,7 @@ class FrontendRPCServer:
         print("ERR no SERVERS because while loop failed", file=sys.stderr)
         print(serverIds, file=sys.stderr)
         print(kvsServers, file=sys.stderr)
-        return "ERR_NOSERVERS" + repr(kvsServers) + '.'.join(serverIds)
+        return "ERR_NOSERVERS" + repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
 
     # printKVPairs: This function routes requests to servers
     # matched with the given serverIds.
