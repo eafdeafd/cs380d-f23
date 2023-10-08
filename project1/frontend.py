@@ -121,10 +121,10 @@ class FrontendRPCServer:
             server = random.choice(serverIds)
             try:
                 value, version = kvsServers[server].get(key)
-                if self.key_to_version[key] == version and str(self.log[key]) == str(value):
-                    return value
-            except:
-                pass
+                if str(self.key_to_version[key]) == str(version) and str(self.log[key]) == str(value):
+                    return f"{key}:{value}"
+            except Exception as e:
+                return e
             serverIds = list(kvsServers.keys())
             time.sleep(1 / self.heartbeat_rate)
         return "ERR_NOSERVERS" #+ repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
