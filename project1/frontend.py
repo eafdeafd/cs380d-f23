@@ -24,7 +24,7 @@ class FrontendRPCServer:
         self.key_to_lock = {}
         self.log = {}
         self.heartbeat_rate = 10  # Rate = # heartbeats per second
-        self.heartbeat_max = 2  # Number of allowed heartbeats till we mark it as dead
+        self.heartbeat_max = 5  # Number of allowed heartbeats till we mark it as dead
         self.start_heartbeat()
 
 
@@ -45,8 +45,6 @@ class FrontendRPCServer:
                     try:
                         if kvsServers[i].heartbeat():
                             heartbeats[i] = 0
-                        else:
-                            heartbeats[i] += 1
                     except:
                         heartbeats[i] += 1
                     if heartbeats[i] >= self.heartbeat_max:
@@ -67,12 +65,13 @@ class FrontendRPCServer:
         if len(kvsServers) == 0:
             return "ERR_NOSERVERS"
         with self.kLock:
-            key = str(key)
+            key = str(key)            
+            self.log[key] = value
+            self.key_to_version[key] += 1
             if key not in self.key_to_version:
                 self.key_to_lock[key] = threading.Lock()
                 self.key_to_version[key] = 0
-            self.log[key] = value
-            self.key_to_version[key] += 1
+
         while self.wLock.locked():
             time.sleep(1 / self.heartbeat_rate)
         with self.key_to_lock[key]:
@@ -142,7 +141,7 @@ class FrontendRPCServer:
     def addServer(self, serverId):
         with self.wLock:
             transport = xmlrpc.client.Transport()
-            transport.timeout = 0.1  # 100ms
+            transport.timeout = 0.2  # 200ms
             kvsServers[serverId] = xmlrpc.client.ServerProxy(
                 baseAddr + str(baseServerPort + serverId), transport=transport)
             with self.kLock:
