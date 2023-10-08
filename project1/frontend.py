@@ -11,7 +11,7 @@ kvsServers = dict()
 requests = list()
 baseAddr = "http://localhost:"
 baseServerPort = 9000
-
+lock = threading.Lock()
 
 class SimpleThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
     pass
@@ -21,6 +21,8 @@ class FrontendRPCServer:
     def __init__(self):
         self.kLock = threading.Lock()
         self.wLock = threading.Lock()
+
+
         self.key_to_version = {}
         self.key_to_lock = {}
         self.log = {}
@@ -63,72 +65,74 @@ class FrontendRPCServer:
     # Per key versioning
     # passing lock to frontend
     def put(self, key, value):
-        if len(kvsServers) == 0:
-            return "ERR_NOSERVERS"
-        with self.kLock:
-            key = str(key)            
-            if key not in self.key_to_version:
-                self.key_to_lock[key] = threading.Lock()
-                self.key_to_version[key] = 0
-            self.log[key] = value
-            self.key_to_version[key] += 1
+        with lock:
+            if len(kvsServers) == 0:
+                return "ERR_NOSERVERS"
+            with self.kLock:
+                key = str(key)            
+                if key not in self.key_to_version:
+                    self.key_to_lock[key] = threading.Lock()
+                    self.key_to_version[key] = 0
+                self.log[key] = value
+                self.key_to_version[key] += 1
 
-        while self.wLock.locked():
-            time.sleep(1 / self.heartbeat_rate)
-        with self.key_to_lock[key]:
-            serverIds = list(kvsServers.keys())
-            retry = set()
-            least_one = False
-            for i in serverIds:
-                try:
-                    kvsServers[i].put(key, value)
-                    least_one = True
-                except:
-                    retry.add(i)
-            while len(retry) > 0:
-                serverIds = set(kvsServers.keys())
-                retry = retry & serverIds
-                done = []
-                for i in retry:
+            #while self.wLock.locked():
+            #    time.sleep(1 / self.heartbeat_rate)
+            #with self.key_to_lock[key]:
+                serverIds = list(kvsServers.keys())
+                retry = set()
+                least_one = False
+                for i in serverIds:
                     try:
                         kvsServers[i].put(key, value)
-                        done.append[i]
                         least_one = True
                     except:
-                        pass
-                for i in done:
-                    retry.discard(i)
-                time.sleep(.001)
-            if not least_one:
-                assert least_one == True
-                return f"PUT FAILED! {key}:{value}"
-            return f"Success put {key}:{value}" + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
+                        retry.add(i)
+                while len(retry) > 0:
+                    serverIds = set(kvsServers.keys())
+                    retry = retry & serverIds
+                    done = []
+                    for i in retry:
+                        try:
+                            kvsServers[i].put(key, value)
+                            done.append[i]
+                            least_one = True
+                        except:
+                            pass
+                    for i in done:
+                        retry.discard(i)
+                    time.sleep(.001)
+                if not least_one:
+                    assert least_one == True
+                    return f"PUT FAILED! {key}:{value}"
+                return f"Success put {key}:{value}" + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
 
 
     # get: This function routes requests from clients to proper
     # servers that are responsible for getting the value
     # associated with the given key.
     def get(self, key):
-        key = str(key)
-        if key not in self.log:
-            return "ERR_KEY"
-        # Get with retries
-        # most up to date version
-        if len(kvsServers) == 0:
-            return "ERR_NOSERVERS" #+ repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
-        serverIds = list(kvsServers.keys())
-        while len(serverIds) != 0:
-            server = random.choice(serverIds)
-            try:
-                value, version = kvsServers[server].get(key).split(":")
-                if str(self.key_to_version[key]) <= str(version):
-                    return f"{key}:{value}"
-                #return f"{key}:{value}:{version}:{self.key_to_version[key]}:{self.log[key]}"
-            except Exception:
-                pass
+        with lock:
+            key = str(key)
+            if key not in self.log:
+                return "ERR_KEY"
+            # Get with retries
+            # most up to date version
+            if len(kvsServers) == 0:
+                return "ERR_NOSERVERS" #+ repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
             serverIds = list(kvsServers.keys())
-            time.sleep(1 / self.heartbeat_rate)
-        return "ERR_NOSERVERS" + repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
+            while len(serverIds) != 0:
+                server = random.choice(serverIds)
+                try:
+                    value, version = kvsServers[server].get(key).split(":")
+                    if str(self.key_to_version[key]) <= str(version):
+                        return f"{key}:{value}"
+                    #return f"{key}:{value}:{version}:{self.key_to_version[key]}:{self.log[key]}"
+                except Exception:
+                    pass
+                serverIds = list(kvsServers.keys())
+                time.sleep(.001)
+            return "ERR_NOSERVERS" + repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
 
     # printKVPairs: This function routes requests to servers
     # matched with the given serverIds.
