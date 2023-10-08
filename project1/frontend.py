@@ -66,29 +66,25 @@ class FrontendRPCServer:
     def put(self, key, value):
         if len(kvsServers) == 0:
             return "ERR_NOSERVERS"
-        while self.wLock.locked():
-            time.sleep(1 / self.heartbeat_rate)
-        key = str(key)
         with self.kLock:
+            key = str(key)
             if key not in self.key_to_version:
                 self.key_to_lock[key] = threading.Lock()
                 self.key_to_version[key] = 0
+            self.log[key] = value
+            self.key_to_version[key] += 1
+        while self.wLock.locked():
+            time.sleep(1 / self.heartbeat_rate)
         with self.key_to_lock[key]:
             serverIds = list(kvsServers.keys())
             retry = set()
             least_one = False
-            done_already = False
             for i in serverIds:
                 try:
                     kvsServers[i].put(key, value)
                     least_one = True
                 except:
                     retry.add(i)
-            #if least_one:
-            #    with self.kLock:
-            #        self.log[key] = value
-            #        self.key_to_version[key] += 1
-            #        done_already = True
             while len(retry) > 0:
                 serverIds = set(kvsServers.keys())
                 retry = retry & serverIds
@@ -103,13 +99,11 @@ class FrontendRPCServer:
                 for i in done:
                     retry.discard(i)
                 time.sleep(.001)
-            with self.kLock:
-                if least_one and not done_already:
-                    self.log[key] = value
-                    self.key_to_version[key] += 1
-                    return f"Success put {key}:{value}"
-                else:
-                    return "ERR_NOSERVERS"
+            if not least_one:
+                assert least_one == True
+                return f"PUT FAILED! {key}:{value}"
+            return f"Success put {key}:{value}"
+
 
     # get: This function routes requests from clients to proper
     # servers that are responsible for getting the value
