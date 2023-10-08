@@ -127,7 +127,7 @@ class FrontendRPCServer:
             server = random.choice(serverIds)
             try:
                 value, version = kvsServers[server].get(key)
-                if self.key_to_version[key] <= version:
+                if self.key_to_version[key] == version:
                     return value
                 else:
                     break
