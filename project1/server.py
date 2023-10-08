@@ -34,7 +34,7 @@ class KVSRPCServer:
     # get: Get the value associated with the given key.
     def get(self, key):
         with self.lock:
-            return self.kvs.get(key, 'ERR_KEY') +":"+ str(self.key_to_version[key])
+            return f"{self.kvs.get(key, 'ERR_KEY')}:{self.key_to_version[key]}"
 
     # printKVPairs: Print all the key-value pairs at this server.
     def printKVPairs(self):
