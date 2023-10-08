@@ -102,7 +102,7 @@ class FrontendRPCServer:
             if not least_one:
                 assert least_one == True
                 return f"PUT FAILED! {key}:{value}"
-            return f"Success put {key}:{value}"# + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
+            return f"Success put {key}:{value}" + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
 
 
     # get: This function routes requests from clients to proper
@@ -123,11 +123,12 @@ class FrontendRPCServer:
                 value, version = kvsServers[server].get(key).split(":")
                 if str(self.key_to_version[key]) == str(version) and str(self.log[key]) == str(value):
                     return f"{key}:{value}"
+                return f"{key}:{value}:{version}:{self.key_to_version[key]}:{self.log[key]}"
             except Exception:
                 pass
             serverIds = list(kvsServers.keys())
             time.sleep(1 / self.heartbeat_rate)
-        return "ERR_NOSERVERS" #+ repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
+        return "ERR_NOSERVERS" + repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
 
     # printKVPairs: This function routes requests to servers
     # matched with the given serverIds.
