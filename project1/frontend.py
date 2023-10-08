@@ -66,11 +66,11 @@ class FrontendRPCServer:
             return "ERR_NOSERVERS"
         with self.kLock:
             key = str(key)            
-            self.log[key] = value
-            self.key_to_version[key] += 1
             if key not in self.key_to_version:
                 self.key_to_lock[key] = threading.Lock()
                 self.key_to_version[key] = 0
+            self.log[key] = value
+            self.key_to_version[key] += 1
 
         while self.wLock.locked():
             time.sleep(1 / self.heartbeat_rate)
@@ -120,7 +120,7 @@ class FrontendRPCServer:
             server = random.choice(serverIds)
             try:
                 value, version = kvsServers[server].get(key)
-                if self.key_to_version[key] == version:
+                if self.key_to_version[key] == version and self.log[key] == value:
                     return value
                 else:
                     break
