@@ -25,7 +25,7 @@ class FrontendRPCServer:
         self.key_to_lock = {}
         self.log = {}
         self.heartbeat_rate = 10  # Rate = # heartbeats per second
-        self.heartbeat_max = 5  # Number of allowed heartbeats till we mark it as dead
+        self.heartbeat_max = 20  # Number of allowed heartbeats till we mark it as dead
         self.start_heartbeat()
 
 
