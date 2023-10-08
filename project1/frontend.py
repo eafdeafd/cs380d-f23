@@ -136,17 +136,17 @@ class FrontendRPCServer:
     # serverId to the cluster membership.
     def addServer(self, serverId):
         with self.wLock:
+            transport = xmlrpc.client.Transport()
+            transport.timeout = 0.1  # 100ms
             kvsServers[serverId] = xmlrpc.client.ServerProxy(
-                baseAddr + str(baseServerPort + serverId))
+                baseAddr + str(baseServerPort + serverId), transport=transport)
             with self.kLock:
                 kvsServers[serverId].update_data({k: v for k, v in self.log.items()}, {
                                                  k: v for k, v in self.key_to_version.items()})
-            return "Success"
+                return "Success"
 
-    # listServer: This function prints out a list of servers that
-    # are currently active/alive inside the cluster.
     def listServer(self):
-        if len(kvsServers) == 0:
+        if len(kvsServers == 0):
             return "ERR_NOSERVERS"
         serverList = list(kvsServers.keys())
         serverList.sort()
