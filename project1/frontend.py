@@ -84,11 +84,11 @@ class FrontendRPCServer:
                     least_one = True
                 except:
                     retry.add(i)
-            if least_one:
-                with self.kLock:
-                    self.log[key] = value
-                    self.key_to_version[key] += 1
-                    done_already = True
+            #if least_one:
+            #    with self.kLock:
+            #        self.log[key] = value
+            #        self.key_to_version[key] += 1
+            #        done_already = True
             while len(retry) > 0:
                 serverIds = set(kvsServers.keys())
                 retry = retry & serverIds
@@ -100,9 +100,9 @@ class FrontendRPCServer:
                         least_one = True
                     except:
                         pass
-                    for i in done:
-                        retry.discard(i)
-                time.sleep(1 / self.heartbeat_rate)
+                for i in done:
+                    retry.discard(i)
+                time.sleep(.001)
             with self.kLock:
                 if least_one and not done_already:
                     self.log[key] = value
