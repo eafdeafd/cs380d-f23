@@ -19,7 +19,7 @@ class KVSRPCServer:
         with self.lock:
             self.kvs = data
             self.key_to_version = version
-            return True
+            return "Success"
 
     # put: Insert a new-key-value pair or updates an existing
     # one with new one if the same key already exists.
@@ -50,10 +50,10 @@ class KVSRPCServer:
             return "[Server " + str(serverId) + "] Receive a request for a normal shutdown"
 
     def heartbeat(self):
-        return True
+        return "Sucess"
 
     def should_shutdown(self):
-        return self.shutdown
+        return "True" if self.should_shutdown else "False"
 
 
 if __name__ == '__main__':
@@ -70,6 +70,6 @@ if __name__ == '__main__':
         ("localhost", basePort + serverId))
     server_instance = KVSRPCServer()
     server.register_instance(server_instance)
-    while not server_instance.should_shutdown():
+    while not server_instance.should_shutdown() == "True":
         server.handle_request()
     print("Server is shutting down...")

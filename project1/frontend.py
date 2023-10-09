@@ -8,10 +8,11 @@ import random
 import sys
 
 kvsServers = dict()
+activeServers = set()
 requests = list()
 baseAddr = "http://localhost:"
 baseServerPort = 9000
-lock = threading.Lock()
+
 
 class SimpleThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
     pass
@@ -46,7 +47,7 @@ class FrontendRPCServer:
             for _ in range(self.heartbeat_max + 1):
                 for i in serverList:
                     try:
-                        if kvsServers[i].heartbeat():
+                        if kvsServers[i].heartbeat() == "Success":
                             heartbeats[i] = 0
                     except:
                         heartbeats[i] += 1
@@ -57,6 +58,7 @@ class FrontendRPCServer:
             for serverId in servers_to_remove:
                 with self.wLock:
                     kvsServers.pop(serverId, None)
+                    activeServers.discard(serverId)
             time.sleep(1 / self.heartbeat_rate)
 
     # put: This function routes requests from clients to proper
@@ -65,73 +67,73 @@ class FrontendRPCServer:
     # Per key versioning
     # passing lock to frontend
     def put(self, key, value):
-        with lock:
-            if len(kvsServers) == 0:
-                return "ERR_NOSERVERS"
-            with self.kLock:
-                key = str(key)            
-                if key not in self.key_to_version:
-                    self.key_to_lock[key] = threading.Lock()
-                    self.key_to_version[key] = 0
-                self.log[key] = value
-                self.key_to_version[key] += 1
-
-            #while self.wLock.locked():
-            #    time.sleep(1 / self.heartbeat_rate)
-            #with self.key_to_lock[key]:
-                serverIds = list(kvsServers.keys())
-                retry = set()
-                least_one = False
-                for i in serverIds:
-                    try:
-                        kvsServers[i].put(key, value)
-                        least_one = True
-                    except:
-                        retry.add(i)
-                while len(retry) > 0:
-                    serverIds = set(kvsServers.keys())
-                    retry = retry & serverIds
-                    done = []
-                    for i in retry:
-                        try:
-                            kvsServers[i].put(key, value)
-                            done.append[i]
-                            least_one = True
-                        except:
-                            pass
-                    for i in done:
-                        retry.discard(i)
-                    time.sleep(.001)
-                if not least_one:
-                    assert least_one == True
-                    return f"PUT FAILED! {key}:{value}"
-                return f"Success put {key}:{value}" + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
+        if len(kvsServers) == 0:
+            return "ERR_NOSERVERS"
+        with self.kLock:
+            key = str(key)            
+            if key not in self.key_to_version:
+                self.key_to_lock[key] = threading.Lock()
+                self.key_to_lock[key].acquire()
+                self.key_to_version[key] = 0
+            else:
+                self.key_to_lock[key].acquire()
+            self.log[key] = value
+            self.key_to_version[key] += 1
+        activeServersList = list(activeServers)
+        least_one = False
+        for i in activeServersList:
+            try:
+                kvsServers[i].put(key, value)
+                least_one = True
+            except:
+                with self.kLock:
+                    activeServers.discard(i)
+        activeServersList = list(activeServers)
+        serverIds = set(kvsServers.keys())
+        repairServers = [i for i in serverIds if i not in activeServersList]
+        for i in repairServers:
+            try:
+                with self.kLock:
+                    kvsServers[i].update_data({k: v for k, v in self.log.items()}, {
+                                                 k: v for k, v in self.key_to_version.items()})
+                    activeServers.add(i)
+                least_one = True
+            except:
+                pass
+        self.key_to_lock.release()
+        return f"Success put {key}:{value}" + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
 
 
     # get: This function routes requests from clients to proper
     # servers that are responsible for getting the value
     # associated with the given key.
     def get(self, key):
-        with lock:
-            key = str(key)
-            if key not in self.log:
-                return "ERR_KEY"
-            # Get with retries
-            # most up to date version
-            if len(kvsServers) == 0:
-                return "ERR_NOSERVERS" #+ repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
+        key = str(key)
+        if key not in self.log:
+            return "ERR_KEY"
+        # Get with retries
+        # most up to date version
+        if len(kvsServers) == 0:
+            return "ERR_NOSERVERS" #+ repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
+        while key not in self.key_to_lock:
+            time.sleep(.00001)
+        with self.key_to_lock[key]:
             serverIds = list(kvsServers.keys())
+            activeServersList = list(activeServers)
             while len(serverIds) != 0:
-                server = random.choice(serverIds)
-                try:
-                    value, version = kvsServers[server].get(key).split(":")
-                    if str(self.key_to_version[key]) <= str(version):
-                        return f"{key}:{value}"
-                    #return f"{key}:{value}:{version}:{self.key_to_version[key]}:{self.log[key]}"
-                except Exception:
-                    pass
+                if len(activeServersList) > 0:
+                    server = random.choice(activeServersList)
+                    try:
+                        value, version = kvsServers[server].get(key).split(":")
+                        if str(self.key_to_version[key]) <= str(version):
+                            return f"{key}:{value}"
+                        #return f"{key}:{value}:{version}:{self.key_to_version[key]}:{self.log[key]}"
+                    except Exception:
+                        pass
+                #Try and repair?
                 serverIds = list(kvsServers.keys())
-                time.sleep(.001)
+                activeServersList = list(activeServers)
+                time.sleep(.01)
             return "ERR_NOSERVERS" + repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
 
     # printKVPairs: This function routes requests to servers
@@ -145,13 +147,14 @@ class FrontendRPCServer:
     # serverId to the cluster membership.
     def addServer(self, serverId):
         with self.wLock:
-            transport = xmlrpc.client.Transport()
-            transport.timeout = 0.2  # 200ms
+            #transport = xmlrpc.client.Transport()
+            #transport.timeout = 0.2  # 200ms
             kvsServers[serverId] = xmlrpc.client.ServerProxy(
-                baseAddr + str(baseServerPort + serverId), transport=transport)
+                baseAddr + str(baseServerPort + serverId))#, transport=transport)
             with self.kLock:
                 kvsServers[serverId].update_data({k: v for k, v in self.log.items()}, {
                                                  k: v for k, v in self.key_to_version.items()})
+                activeServers.add(serverId)
                 return "Success"
 
     def listServer(self):
@@ -172,6 +175,7 @@ class FrontendRPCServer:
             try:
                 kvsServers[serverId].shutdownServer()
                 kvsServers.pop(serverId, None)
+                activeServers.discard(serverId)
                 return f"[Shutdown Server {serverId}]"
             except:
                 return f"[ERROR SHUTTING DOWN SERVER {serverId}]"
