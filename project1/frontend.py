@@ -29,6 +29,7 @@ class FrontendRPCServer:
         self.log = {}
         self.heartbeat_rate = 10  # Rate = # heartbeats per second
         self.heartbeat_max = 5  # Number of allowed heartbeats till we mark it as dead
+        print("HIIII")
         #self.start_heartbeat()
 
 
@@ -68,7 +69,6 @@ class FrontendRPCServer:
     # passing lock to frontend
     def put(self, key, value):
         sys.stderr.write(f"[PUT] {key} {value}\n")
-        sys.stderr.flush()
         if len(kvsServers) == 0:
             sys.stderr.write("ERR_NOSERVERS\n")
             return "ERR_NOSERVERS"
