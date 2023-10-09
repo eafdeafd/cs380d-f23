@@ -53,7 +53,7 @@ class KVSRPCServer:
         return "Sucess"
 
     def should_shutdown(self):
-        return "True" if self.should_shutdown else "False"
+        return "True" if self.shutdown else "False"
 
 
 if __name__ == '__main__':
