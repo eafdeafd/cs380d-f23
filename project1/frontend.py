@@ -67,9 +67,9 @@ class FrontendRPCServer:
     # Per key versioning
     # passing lock to frontend
     def put(self, key, value):
-        print("[PUT]", key, value)
+        sys.stderr.write(f"[PUT] {key} {value}\n")
         if len(kvsServers) == 0:
-            print("ERR_NOSERVERS")
+            sys.stderr.write("ERR_NOSERVERS\n")
             return "ERR_NOSERVERS"
         with self.kLock:
             key = str(key)            
@@ -111,14 +111,14 @@ class FrontendRPCServer:
     # associated with the given key.
     def get(self, key):
         key = str(key)
-        print("[GET]", key)
+        sys.stderr.write(f"[GET] {key}\n")
         if key not in self.log:
-            print("ERR_KEY")
+            sys.stderr.write("ERR_KEY\n")
             return "ERR_KEY"
         # Get with retries
         # most up to date version
         if len(kvsServers) == 0:
-            print("ERR_NOSERVERS")
+            sys.stderr.write("ERR_NOSERVERS\n")
             return "ERR_NOSERVERS" #+ repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
         while key not in self.key_to_lock:
             time.sleep(.00001)
@@ -131,7 +131,7 @@ class FrontendRPCServer:
                     try:
                         value, version = kvsServers[server].get(key).split(":")
                         if str(self.key_to_version[key]) <= str(version):
-                            print(f"{key}:{value}")
+                            sys.stderr.write(f"{key}:{value}\n")
                             return f"{key}:{value}"
                         #return f"{key}:{value}:{version}:{self.key_to_version[key]}:{self.log[key]}"
                     except Exception:
@@ -147,7 +147,7 @@ class FrontendRPCServer:
     def printKVPairs(self, serverId):
         if serverId not in kvsServers:
             return "ERR_NOEXIST"
-        print("printKVPairs", serverId)
+        sys.stderr.write(f"printKVPairs {serverId}\n")
         return kvsServers[serverId].printKVPairs()
 
     # addServer: This function registers a new server with the
@@ -162,7 +162,7 @@ class FrontendRPCServer:
                 kvsServers[serverId].update_data({k: v for k, v in self.log.items()}, {
                                                  k: v for k, v in self.key_to_version.items()})
                 activeServers.add(serverId)
-                print("Sucess Adding Server", serverId)
+                sys.stderr.write(f"Sucess Adding Server {serverId}\n")
                 return "Success"
 
     def listServer(self):
@@ -172,7 +172,7 @@ class FrontendRPCServer:
         serverList.sort()
         serverList = [str(i) for i in serverList]
         serverList = ", ".join(serverList)
-        print("[listServer]", serverList)
+        sys.stderr.write(f"[listServer] {serverList}\n")
         return serverList
 
     # shutdownServer: This function routes the shutdown request to
@@ -186,10 +186,10 @@ class FrontendRPCServer:
                 kvsServers[serverId].shutdownServer()
                 kvsServers.pop(serverId, None)
                 activeServers.discard(serverId)
-                print(f"[Shutdown Server {serverId}]")
+                sys.stderr.write(f"[Shutdown Server {serverId}]\n")
                 return f"[Shutdown Server {serverId}]"
             except:
-                print(f"[ERROR SHUTTING DOWN SERVER {serverId}]")
+                sys.stderr.write(f"[ERROR SHUTTING DOWN SERVER {serverId}]\n")
                 return f"[ERROR SHUTTING DOWN SERVER {serverId}]"
 
 
