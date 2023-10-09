@@ -68,6 +68,7 @@ class FrontendRPCServer:
     # passing lock to frontend
     def put(self, key, value):
         sys.stderr.write(f"[PUT] {key} {value}\n")
+        sys.stderr.flush()
         if len(kvsServers) == 0:
             sys.stderr.write("ERR_NOSERVERS\n")
             return "ERR_NOSERVERS"
