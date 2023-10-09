@@ -34,9 +34,10 @@ class FrontendRPCServer:
 
     # Forever heartbeat on thread.
     def start_heartbeat(self):
-        self.heartbeat_thread = threading.Thread(target=self.heartbeat_check)
-        self.heartbeat_thread.daemon = True
-        self.heartbeat_thread.start()
+        #self.heartbeat_thread = threading.Thread(target=self.heartbeat_check)
+        #self.heartbeat_thread.daemon = True
+        #self.heartbeat_thread.start()
+        pass
 
     # Timer every second, ping every server. If alive, reset counter. Otherwise remove server after 5 seconds for death.
     def heartbeat_check(self):
