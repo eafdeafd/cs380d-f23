@@ -146,8 +146,8 @@ def runWorkload(k8s_client, k8s_apps_client, prefix, thread_id,
                 if optype[idx % 100] == "Put":
                     try:
                         result = clientList[thread_id].put(keys[idx], run_vals[idx])
-                    except:
-                        print(f"[Error in thread {thread_id}] put request fail, key = {keys[idx]}, val = {run_vals[idx]}")
+                    except Exception as e:
+                        print(f"[Error in thread {thread_id}] put request fail, key = {keys[idx]}, val = {run_vals[idx]}", e)
                         return
                 elif optype[idx % 100] == "Get":
                     try:
@@ -156,8 +156,8 @@ def runWorkload(k8s_client, k8s_apps_client, prefix, thread_id,
                         if int(result[0]) != keys[idx] or int(result[1]) != load_vals[idx]:
                             print(f"[Error] request = ({keys[idx]}, {load_vals[idx]}), return = ({int(result[0])}, {int(result[1])})")
                             return
-                    except:
-                        print(f"[Error in thread {thread_id}] get request fail, key = {keys[idx]}")
+                    except Exception as e:
+                        print(f"[Error in thread {thread_id}] get request fail, key = {keys[idx]}", e)
                         return
                 else:
                     print("[Error] unknown operation type")

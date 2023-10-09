@@ -47,8 +47,8 @@ class FrontendRPCServer:
             for _ in range(self.heartbeat_max + 1):
                 for i in serverList:
                     try:
-                        if kvsServers[i].heartbeat() == "Success":
-                            heartbeats[i] = 0
+                        kvsServers[i].heartbeat()
+                        heartbeats[i] = 0
                     except:
                         heartbeats[i] += 1
                     if heartbeats[i] >= self.heartbeat_max:
