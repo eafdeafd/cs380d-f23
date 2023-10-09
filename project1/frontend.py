@@ -102,7 +102,7 @@ class FrontendRPCServer:
                 least_one = True
             except:
                 pass
-        self.key_to_lock.release()
+        self.key_to_lock[key].release()
         return f"Success put {key}:{value}" + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
 
 
