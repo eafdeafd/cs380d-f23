@@ -70,6 +70,6 @@ if __name__ == '__main__':
         ("localhost", basePort + serverId))
     server_instance = KVSRPCServer()
     server.register_instance(server_instance)
-    while not server_instance.should_shutdown() == "True":
+    while server_instance.should_shutdown() == "False":
         server.handle_request()
     print("Server is shutting down...")

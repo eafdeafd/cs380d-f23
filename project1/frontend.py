@@ -29,15 +29,14 @@ class FrontendRPCServer:
         self.log = {}
         self.heartbeat_rate = 10  # Rate = # heartbeats per second
         self.heartbeat_max = 5  # Number of allowed heartbeats till we mark it as dead
-        self.start_heartbeat()
+        #self.start_heartbeat()
 
 
     # Forever heartbeat on thread.
     def start_heartbeat(self):
-        #self.heartbeat_thread = threading.Thread(target=self.heartbeat_check)
-        #self.heartbeat_thread.daemon = True
-        #self.heartbeat_thread.start()
-        pass
+        self.heartbeat_thread = threading.Thread(target=self.heartbeat_check)
+        self.heartbeat_thread.daemon = True
+        self.heartbeat_thread.start()
 
     # Timer every second, ping every server. If alive, reset counter. Otherwise remove server after 5 seconds for death.
     def heartbeat_check(self):
@@ -68,7 +67,9 @@ class FrontendRPCServer:
     # Per key versioning
     # passing lock to frontend
     def put(self, key, value):
+        print("[PUT]", key, value)
         if len(kvsServers) == 0:
+            print("ERR_NOSERVERS")
             return "ERR_NOSERVERS"
         with self.kLock:
             key = str(key)            
@@ -110,11 +111,14 @@ class FrontendRPCServer:
     # associated with the given key.
     def get(self, key):
         key = str(key)
+        print("[GET]", key)
         if key not in self.log:
+            print("ERR_KEY")
             return "ERR_KEY"
         # Get with retries
         # most up to date version
         if len(kvsServers) == 0:
+            print("ERR_NOSERVERS")
             return "ERR_NOSERVERS" #+ repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
         while key not in self.key_to_lock:
             time.sleep(.00001)
@@ -127,6 +131,7 @@ class FrontendRPCServer:
                     try:
                         value, version = kvsServers[server].get(key).split(":")
                         if str(self.key_to_version[key]) <= str(version):
+                            print(f"{key}:{value}")
                             return f"{key}:{value}"
                         #return f"{key}:{value}:{version}:{self.key_to_version[key]}:{self.log[key]}"
                     except Exception:
@@ -142,6 +147,7 @@ class FrontendRPCServer:
     def printKVPairs(self, serverId):
         if serverId not in kvsServers:
             return "ERR_NOEXIST"
+        print("printKVPairs", serverId)
         return kvsServers[serverId].printKVPairs()
 
     # addServer: This function registers a new server with the
@@ -156,6 +162,7 @@ class FrontendRPCServer:
                 kvsServers[serverId].update_data({k: v for k, v in self.log.items()}, {
                                                  k: v for k, v in self.key_to_version.items()})
                 activeServers.add(serverId)
+                print("Sucess Adding Server", serverId)
                 return "Success"
 
     def listServer(self):
@@ -164,7 +171,9 @@ class FrontendRPCServer:
             return "ERR_NOSERVERS"
         serverList.sort()
         serverList = [str(i) for i in serverList]
-        return ", ".join(serverList)
+        serverList = ", ".join(serverList)
+        print("[listServer]", serverList)
+        return serverList
 
     # shutdownServer: This function routes the shutdown request to
     # a server matched with the specified serverId to let the corresponding
@@ -177,8 +186,10 @@ class FrontendRPCServer:
                 kvsServers[serverId].shutdownServer()
                 kvsServers.pop(serverId, None)
                 activeServers.discard(serverId)
+                print(f"[Shutdown Server {serverId}]")
                 return f"[Shutdown Server {serverId}]"
             except:
+                print(f"[ERROR SHUTTING DOWN SERVER {serverId}]")
                 return f"[ERROR SHUTTING DOWN SERVER {serverId}]"
 
 
