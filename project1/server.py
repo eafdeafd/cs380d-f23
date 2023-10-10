@@ -9,7 +9,6 @@ basePort = 9000
 class KVSRPCServer:
 
     def __init__(self):
-        self.version = 0
         self.kvs = {}
         self.shutdown = False
 

@@ -23,7 +23,6 @@ class FrontendRPCServer:
     def __init__(self):
         self.kLock = threading.Lock()
         self.wLock = threading.Lock()
-        self.key_to_version = {}
         self.key_to_lock = {}
         self.log = {}
         self.heartbeat_rate = 10  # Rate = # heartbeats per second
@@ -73,14 +72,12 @@ class FrontendRPCServer:
             return "ERR_NOSERVERS"
         with self.kLock:
             key = str(key)            
-            if key not in self.key_to_version:
+            if key not in self.key_to_lock:
                 self.key_to_lock[key] = threading.Lock()
                 self.key_to_lock[key].acquire()
-                self.key_to_version[key] = 0
             else:
                 self.key_to_lock[key].acquire()
             self.log[key] = value
-            self.key_to_version[key] += 1
         activeServersList = list(activeServers)
         least_one = False
         for i in activeServersList:
@@ -98,8 +95,7 @@ class FrontendRPCServer:
             try:
                 with self.kLock:
                     with serverLocks[i]:
-                        kvsServers[i].update_data({k: v for k, v in self.log.items()}, {
-                                                 k: v for k, v in self.key_to_version.items()})
+                        kvsServers[i].update_data({k: v for k, v in self.log.items()})
                     activeServers.add(i)
                 least_one = True
             except:
@@ -107,7 +103,7 @@ class FrontendRPCServer:
         if not least_one:
             print(f"DIDNT SUCCEED IN PUT {key}{value}")
         self.key_to_lock[key].release()
-        return f"Success put {key}:{value}" + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
+        return f"Success put {key}:{value}" #+ repr(kvsServers) + repr(self.log) + repr(self.key_to_lock)
 
 
     # get: This function routes requests from clients to proper
@@ -123,7 +119,7 @@ class FrontendRPCServer:
         # most up to date version
         if len(kvsServers) == 0:
             print("ERR_NOSERVERS")
-            return "ERR_NOSERVERS" #+ repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
+            return "ERR_NOSERVERS" 
         while key not in self.key_to_lock:
             time.sleep(.00001)
         with self.key_to_lock[key]:
@@ -142,7 +138,7 @@ class FrontendRPCServer:
                 serverIds = list(kvsServers.keys())
                 activeServersList = list(activeServers)
                 time.sleep(.01)
-            return "ERR_NOSERVERS" + repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_version) + repr(self.key_to_lock)
+            return "ERR_NOSERVERS" #+ repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_lock)
 
     # printKVPairs: This function routes requests to servers
     # matched with the given serverIds.
@@ -164,8 +160,7 @@ class FrontendRPCServer:
             serverLocks[serverId] = threading.Lock()
             with self.kLock:
                 with serverLocks[serverId]:
-                    kvsServers[serverId].update_data({k: v for k, v in self.log.items()}, {
-                                                 k: v for k, v in self.key_to_version.items()})
+                    kvsServers[serverId].update_data({k: v for k, v in self.log.items()})
                 activeServers.add(serverId)
                 print(f"Sucess Adding Server {serverId}")
                 return "Success"
