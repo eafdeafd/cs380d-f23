@@ -5,10 +5,12 @@ import threading
 from socketserver import ThreadingMixIn
 from xmlrpc.server import SimpleXMLRPCServer
 import random
-import sys
 
+# All Servers
 kvsServers = dict()
+# Active/Up-to-date Servers
 activeServers = set()
+# Servers -> Locks (needed bc of RPC call timeouts)
 serverLocks = dict()
 requests = list()
 baseAddr = "http://localhost:"
@@ -21,12 +23,15 @@ class SimpleThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
 
 class FrontendRPCServer:
     def __init__(self):
+        # Key Lock for dicts
         self.kLock = threading.Lock()
+        # Add/Remove Server lock for kvsServers and activeServers
         self.wLock = threading.Lock()
-        self.pLock = threading.Lock()
-        self.get_pointer = 0
+        # Per-key Locking
         self.key_to_lock = {}
+        # Master Log
         self.log = {}
+        # Heartbeat parameters
         self.heartbeat_rate = 10  # Rate = # heartbeats per second
         self.heartbeat_max = 3  # Number of allowed heartbeats till we mark it as dead
         self.start_heartbeat()
@@ -38,7 +43,7 @@ class FrontendRPCServer:
         self.heartbeat_thread.daemon = True
         self.heartbeat_thread.start()
 
-    # Timer every second, ping every server. If alive, reset counter. Otherwise remove server after 5 seconds for death.
+    # Ping every server. If alive, reset counter. Otherwise count it dead after some timeout.
     def heartbeat_check(self):
         while True:
             servers_to_remove = []
@@ -58,7 +63,6 @@ class FrontendRPCServer:
             # Remove marked servers
             for serverId in servers_to_remove:
                 with self.wLock:
-                    #print("[HEARTBEAT_KILL]", serverId)
                     kvsServers.pop(serverId, None)
                     activeServers.discard(serverId)
             time.sleep(1 / self.heartbeat_rate)
@@ -67,12 +71,10 @@ class FrontendRPCServer:
     # servers that are responsible for inserting a new key-value
     # pair or updating an existing one.
     # Per key versioning
-    # passing lock to frontend
     def put(self, key, value):
-        #print(f"[PUT] {key}:{value}")
         if len(kvsServers) == 0:
-            #print("ERR_NOSERVERS")
             return "ERR_NOSERVERS"
+        # Create lock per key
         with self.kLock:
             key = str(key)            
             if key not in self.key_to_lock:
@@ -81,16 +83,16 @@ class FrontendRPCServer:
             else:
                 self.key_to_lock[key].acquire()
             self.log[key] = value
+        # Try and put for all active servers, otherwise deprecate it
         activeServersList = list(activeServers)
-        least_one = False
         for i in activeServersList:
             try:
                 with serverLocks[i]:
                     kvsServers[i].put(key, value)
-                least_one = True
             except:
                 with self.kLock:
                     activeServers.discard(i)
+        # Try and repair ones that were missed from previous puts and reactive them
         activeServersList = list(activeServers)
         serverIds = set(kvsServers.keys())
         repairServers = [i for i in serverIds if i not in activeServersList]
@@ -100,13 +102,10 @@ class FrontendRPCServer:
                     with serverLocks[i]:
                         kvsServers[i].update_data({k: v for k, v in self.log.items()})
                     activeServers.add(i)
-                least_one = True
             except:
                 pass
-        #if not least_one:
-            #print(f"DIDNT SUCCEED IN PUT {key}{value}")
         self.key_to_lock[key].release()
-        return f"Success put {key}:{value}" #+ repr(kvsServers) + repr(self.log) + repr(self.key_to_lock)
+        return f"Success put {key}:{value}"
 
 
     # get: This function routes requests from clients to proper
@@ -114,38 +113,32 @@ class FrontendRPCServer:
     # associated with the given key.
     def get(self, key):
         key = str(key)
-        #print(f"[GET] {key}")
         if key not in self.log:
-            #print("ERR_KEY")
             return "ERR_KEY"
-        # Get with retries
-        # most up to date version
         if len(kvsServers) == 0:
-            #print("ERR_NOSERVERS")
             return "ERR_NOSERVERS" 
+        # Could potentially have concurrent get/put, put will create the lock
         while key not in self.key_to_lock:
             time.sleep(.00001)
+        # Operations are atomic for get/put on same key
         with self.key_to_lock[key]:
             serverIds = list(kvsServers.keys())
             activeServersList = list(activeServers)
+            # Get with retries, while there are still servers that could be alive
             while len(serverIds) != 0:
+                # Get from random active server
                 if len(activeServersList) > 0:
-                    #server = self.get_pointer % len(activeServersList)
-                    #self.get_pointer += 1
-                    #if self.get_pointer > len(activeServersList):
-                    #    self.get_pointer = 0
                     server = random.choice(activeServersList)
                     try:
                         with serverLocks[server]:
                             value = kvsServers[server].get(key)
-                            #print(f"{key}:{value}")
                             return f"{key}:{value}"
                     except Exception:
                         pass
                 serverIds = list(kvsServers.keys())
                 activeServersList = list(activeServers)
                 time.sleep(.01)
-            return "ERR_NOSERVERS" #+ repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_lock)
+            return "ERR_NOSERVERS"
 
     # printKVPairs: This function routes requests to servers
     # matched with the given serverIds.
@@ -160,16 +153,14 @@ class FrontendRPCServer:
     # serverId to the cluster membership.
     def addServer(self, serverId):
         with self.wLock:
-            #transport = xmlrpc.client.Transport()
-            #transport.timeout = 0.2  # 200ms
             kvsServers[serverId] = xmlrpc.client.ServerProxy(
-                baseAddr + str(baseServerPort + serverId))#, transport=transport)
+                baseAddr + str(baseServerPort + serverId))
             serverLocks[serverId] = threading.Lock()
+            # Adding a server and populate with master log
             with self.kLock:
                 with serverLocks[serverId]:
                     kvsServers[serverId].update_data({k: v for k, v in self.log.items()})
                 activeServers.add(serverId)
-                #print(f"Sucess Adding Server {serverId}")
                 return "Success"
 
     def listServer(self):
@@ -179,7 +170,6 @@ class FrontendRPCServer:
         serverList.sort()
         serverList = [str(i) for i in serverList]
         serverList = ", ".join(serverList)
-        #print(f"[listServer] {serverList}")
         return serverList
 
     # shutdownServer: This function routes the shutdown request to
@@ -195,10 +185,8 @@ class FrontendRPCServer:
                 kvsServers.pop(serverId, None)
                 serverLocks.pop(serverId, None)
                 activeServers.discard(serverId)
-                #print(f"[Shutdown Server {serverId}]")
                 return f"[Shutdown Server {serverId}]"
             except:
-                #print(f"[ERROR SHUTTING DOWN SERVER {serverId}]")
                 return f"[ERROR SHUTTING DOWN SERVER {serverId}]"
 
 
