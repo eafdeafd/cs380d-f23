@@ -26,7 +26,7 @@ class FrontendRPCServer:
         self.key_to_lock = {}
         self.log = {}
         self.heartbeat_rate = 10  # Rate = # heartbeats per second
-        self.heartbeat_max = 5  # Number of allowed heartbeats till we mark it as dead
+        self.heartbeat_max = 3  # Number of allowed heartbeats till we mark it as dead
         self.start_heartbeat()
 
 
@@ -137,7 +137,7 @@ class FrontendRPCServer:
                         pass
                 serverIds = list(kvsServers.keys())
                 activeServersList = list(activeServers)
-                time.sleep(.01)
+                time.sleep(1 / self.heartbeat_rate)
             return "ERR_NOSERVERS" #+ repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_lock)
 
     # printKVPairs: This function routes requests to servers
