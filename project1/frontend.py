@@ -23,6 +23,8 @@ class FrontendRPCServer:
     def __init__(self):
         self.kLock = threading.Lock()
         self.wLock = threading.Lock()
+        self.pLock = threading.Lock()
+        self.get_pointer = 0
         self.key_to_lock = {}
         self.log = {}
         self.heartbeat_rate = 10  # Rate = # heartbeats per second
@@ -56,6 +58,7 @@ class FrontendRPCServer:
             # Remove marked servers
             for serverId in servers_to_remove:
                 with self.wLock:
+                    print("[HEARTBEAT_KILL]", serverId)
                     kvsServers.pop(serverId, None)
                     activeServers.discard(serverId)
             time.sleep(1 / self.heartbeat_rate)
@@ -127,7 +130,11 @@ class FrontendRPCServer:
             activeServersList = list(activeServers)
             while len(serverIds) != 0:
                 if len(activeServersList) > 0:
-                    server = random.choice(activeServersList)
+                    with self.pLock:
+                        server = self.get_pointer % len(activeServersList)
+                        self.get_pointer += 1
+                        if self.get_pointer > len(activeServersList):
+                            self.get_pointer = 0
                     try:
                         with serverLocks[server]:
                             value = kvsServers[server].get(key)
