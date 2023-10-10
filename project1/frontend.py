@@ -58,7 +58,7 @@ class FrontendRPCServer:
             # Remove marked servers
             for serverId in servers_to_remove:
                 with self.wLock:
-                    print("[HEARTBEAT_KILL]", serverId)
+                    #print("[HEARTBEAT_KILL]", serverId)
                     kvsServers.pop(serverId, None)
                     activeServers.discard(serverId)
             time.sleep(1 / self.heartbeat_rate)
@@ -69,9 +69,9 @@ class FrontendRPCServer:
     # Per key versioning
     # passing lock to frontend
     def put(self, key, value):
-        print(f"[PUT] {key}:{value}")
+        #print(f"[PUT] {key}:{value}")
         if len(kvsServers) == 0:
-            print("ERR_NOSERVERS")
+            #print("ERR_NOSERVERS")
             return "ERR_NOSERVERS"
         with self.kLock:
             key = str(key)            
@@ -103,8 +103,8 @@ class FrontendRPCServer:
                 least_one = True
             except:
                 pass
-        if not least_one:
-            print(f"DIDNT SUCCEED IN PUT {key}{value}")
+        #if not least_one:
+            #print(f"DIDNT SUCCEED IN PUT {key}{value}")
         self.key_to_lock[key].release()
         return f"Success put {key}:{value}" #+ repr(kvsServers) + repr(self.log) + repr(self.key_to_lock)
 
@@ -114,14 +114,14 @@ class FrontendRPCServer:
     # associated with the given key.
     def get(self, key):
         key = str(key)
-        print(f"[GET] {key}")
+        #print(f"[GET] {key}")
         if key not in self.log:
-            print("ERR_KEY")
+            #print("ERR_KEY")
             return "ERR_KEY"
         # Get with retries
         # most up to date version
         if len(kvsServers) == 0:
-            print("ERR_NOSERVERS")
+            #print("ERR_NOSERVERS")
             return "ERR_NOSERVERS" 
         while key not in self.key_to_lock:
             time.sleep(.00001)
@@ -130,15 +130,14 @@ class FrontendRPCServer:
             activeServersList = list(activeServers)
             while len(serverIds) != 0:
                 if len(activeServersList) > 0:
-                    with self.pLock:
-                        server = self.get_pointer % len(activeServersList)
-                        self.get_pointer += 1
-                        if self.get_pointer > len(activeServersList):
-                            self.get_pointer = 0
+                    server = self.get_pointer % len(activeServersList)
+                    self.get_pointer += 1
+                    if self.get_pointer > len(activeServersList):
+                        self.get_pointer = 0
                     try:
                         with serverLocks[server]:
                             value = kvsServers[server].get(key)
-                            print(f"{key}:{value}")
+                            #print(f"{key}:{value}")
                             return f"{key}:{value}"
                     except Exception:
                         pass
@@ -169,7 +168,7 @@ class FrontendRPCServer:
                 with serverLocks[serverId]:
                     kvsServers[serverId].update_data({k: v for k, v in self.log.items()})
                 activeServers.add(serverId)
-                print(f"Sucess Adding Server {serverId}")
+                #print(f"Sucess Adding Server {serverId}")
                 return "Success"
 
     def listServer(self):
@@ -179,7 +178,7 @@ class FrontendRPCServer:
         serverList.sort()
         serverList = [str(i) for i in serverList]
         serverList = ", ".join(serverList)
-        print(f"[listServer] {serverList}")
+        #print(f"[listServer] {serverList}")
         return serverList
 
     # shutdownServer: This function routes the shutdown request to
@@ -195,10 +194,10 @@ class FrontendRPCServer:
                 kvsServers.pop(serverId, None)
                 serverLocks.pop(serverId, None)
                 activeServers.discard(serverId)
-                print(f"[Shutdown Server {serverId}]")
+                #print(f"[Shutdown Server {serverId}]")
                 return f"[Shutdown Server {serverId}]"
             except:
-                print(f"[ERROR SHUTTING DOWN SERVER {serverId}]")
+                #print(f"[ERROR SHUTTING DOWN SERVER {serverId}]")
                 return f"[ERROR SHUTTING DOWN SERVER {serverId}]"
 
 
