@@ -130,10 +130,11 @@ class FrontendRPCServer:
             activeServersList = list(activeServers)
             while len(serverIds) != 0:
                 if len(activeServersList) > 0:
-                    server = self.get_pointer % len(activeServersList)
-                    self.get_pointer += 1
-                    if self.get_pointer > len(activeServersList):
-                        self.get_pointer = 0
+                    #server = self.get_pointer % len(activeServersList)
+                    #self.get_pointer += 1
+                    #if self.get_pointer > len(activeServersList):
+                    #    self.get_pointer = 0
+                    server = random.choice(activeServersList)
                     try:
                         with serverLocks[server]:
                             value = kvsServers[server].get(key)
@@ -143,7 +144,7 @@ class FrontendRPCServer:
                         pass
                 serverIds = list(kvsServers.keys())
                 activeServersList = list(activeServers)
-                time.sleep(1 / self.heartbeat_rate)
+                time.sleep(.01)
             return "ERR_NOSERVERS" #+ repr(kvsServers) + '.'.join([str(i) for i in serverIds]) + repr(kvsServers) + repr(self.log) + repr(self.key_to_lock)
 
     # printKVPairs: This function routes requests to servers
