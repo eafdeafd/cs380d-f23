@@ -27,7 +27,7 @@ class FrontendRPCServer:
         self.log = {}
         self.heartbeat_rate = 10  # Rate = # heartbeats per second
         self.heartbeat_max = 5  # Number of allowed heartbeats till we mark it as dead
-        #self.start_heartbeat()
+        self.start_heartbeat()
 
 
     # Forever heartbeat on thread.
